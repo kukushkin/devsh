@@ -67,7 +67,7 @@ func startDockerCmd(cfg ConfigValues) string {
 		"--detach",
 	}
 	if cfg.DevContainerNetwork != "" {
-		opts = append(opts, cfg.DevContainerNetwork)
+		opts = append(opts, "--network "+cfg.DevContainerNetwork)
 	}
 	for _, volume := range cfg.DevContainerVolumes {
 		opts = append(opts, "--volume "+volume)
