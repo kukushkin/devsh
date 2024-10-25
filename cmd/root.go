@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	Version           string = "debug-version"
+	Version           string = "v0.1.0-dev"
 	globalFlagVerbose bool   = false
 )
 
