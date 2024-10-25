@@ -6,10 +6,10 @@ BUILD_DIR = build
 MAIN = main.go
 
 BUILD_FLAGS_DEBUG = -ldflags "-X main.debug=true"
-BUILD_FLAGS_RELEASE = -ldflags "-X main.debug=false"
+BUILD_FLAGS_RELEASE = -ldflags "-X main.debug=false -s -w"
 
 run:
-	$(GO) run $(MAIN)
+	$(GO) run $(MAIN) $(RUN_ARGS)
 
 build: build-debug
 build-debug:

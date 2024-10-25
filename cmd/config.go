@@ -3,25 +3,45 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
-const configFilename string = ".devsh"
+const (
+	globalConfigFilename string = "~/.devsh/config"
+	configFilename       string = ".devsh"
+)
 
+type GlobalConfigValues struct {
+	Image               string   `yaml:"image,omitempty"`
+	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
+	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
+	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
+}
+
+var defaultGlobalConfigValues = GlobalConfigValues{
+	Image:               "",
+	ShellCmd:            "/bin/bash",
+	DevContainerVolumes: nil,
+	DevContainerNetwork: "",
+}
+
+// Project config values replace global config values if set
 type ConfigValues struct {
-	Image               string   `yaml:"image"`
-	Name                string   `yaml:"name"`
-	ShellCmd            string   `yaml:"shell_cmd"`
-	DevContainerHost    string   `yaml:"dev_container_host"`
-	DevContainerDir     string   `yaml:"dev_container_dir"`
-	DevContainerName    string   `yaml:"dev_container_name"`
-	DevContainerVolumes []string `yaml:"dev_container_volumes"`
-	DevContainerNetwork string   `yaml:"dev_container_network"`
+	Image               string   `yaml:"image,omitempty"`
+	Name                string   `yaml:"name,omitempty"`
+	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
+	DevContainerHost    string   `yaml:"dev_container_host,omitempty"`
+	DevContainerDir     string   `yaml:"dev_container_dir,omitempty"`
+	DevContainerName    string   `yaml:"dev_container_name,omitempty"`
+	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
+	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
 }
 
 // configCmd represents the config command
@@ -50,16 +70,68 @@ directory of the project.
   TBD
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("config called")
-		configValues := configLoad()
+		cfg := configLoad()
 
-		fmt.Printf("%v\n", configValues)
+		configYaml, err := yaml.Marshal(cfg)
+		if err != nil {
+			log.Fatalf("ERROR: Failed to serialize config: ", err)
+		}
+
+		fmt.Printf("---\n%s\n", string(configYaml))
 	},
 }
 
+// Loads and returns a combined config for the project in the current folder.
 func configLoad() ConfigValues {
+	globalConfigValues := configLoadGlobal()
+	configValues := configLoadLocal()
+
+	// fill empty values with defaults from the global configuration
+	if configValues.Image == "" {
+		configValues.Image = globalConfigValues.Image
+	}
+	if configValues.ShellCmd == "" {
+		configValues.ShellCmd = globalConfigValues.ShellCmd
+	}
+	if len(configValues.DevContainerVolumes) == 0 {
+		configValues.DevContainerVolumes = globalConfigValues.DevContainerVolumes
+	}
+	if configValues.DevContainerNetwork == "" {
+		configValues.DevContainerNetwork = globalConfigValues.DevContainerNetwork
+	}
+
+	// fill values that are still empty with dynamically constructed conventional defaults
+	if configValues.Name == "" {
+		configValues.Name = configDefaultProjectName()
+	}
+
+	if configValues.DevContainerHost == "" {
+		configValues.DevContainerHost = configDefaultDevContainerHost(configValues)
+	}
+	if configValues.DevContainerDir == "" {
+		configValues.DevContainerDir = configDefaultDevContainerDir(configValues)
+	}
+	if configValues.DevContainerName == "" {
+		configValues.DevContainerName = configDefaultDevContainerName(configValues)
+	}
+	if configValues.DevContainerNetwork == "" {
+		configValues.DevContainerNetwork = configDefaultDevContainerNetwork(configValues)
+	}
+
+	return configValues
+}
+
+func configLoadLocal() ConfigValues {
+	// If the config file does not exist, return an empty configuration
+	_, err := os.Stat(configFilename)
+	if errors.Is(err, os.ErrNotExist) {
+		log.Printf("WARN: Config file is not found: %s\n", configFilename)
+		return ConfigValues{}
+	}
+
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
+
 		log.Fatalf("ERROR: Failed to open config file: %s", err)
 		panic(err)
 	}
@@ -68,6 +140,82 @@ func configLoad() ConfigValues {
 	yaml.Unmarshal(configFile, &configValues)
 
 	return configValues
+}
+
+func configLoadGlobal() GlobalConfigValues {
+	// If the config file does not exist, return an empty/default configuration
+	_, err := os.Stat(globalConfigFilename)
+	if errors.Is(err, os.ErrNotExist) {
+		return defaultGlobalConfigValues
+	}
+
+	configFile, err := os.ReadFile(globalConfigFilename)
+	if err != nil {
+
+		log.Fatalf("ERROR: Failed to open config file: %s", err)
+	}
+
+	var globalConfigValues GlobalConfigValues
+	yaml.Unmarshal(configFile, &globalConfigValues)
+
+	// fill empty values with defaults from the global configuration
+	if globalConfigValues.Image == "" {
+		globalConfigValues.Image = defaultGlobalConfigValues.Image
+	}
+	if globalConfigValues.ShellCmd == "" {
+		globalConfigValues.ShellCmd = defaultGlobalConfigValues.ShellCmd
+	}
+	if len(globalConfigValues.DevContainerVolumes) == 0 {
+		globalConfigValues.DevContainerVolumes = defaultGlobalConfigValues.DevContainerVolumes
+	}
+	if globalConfigValues.DevContainerNetwork == "" {
+		globalConfigValues.DevContainerNetwork = defaultGlobalConfigValues.DevContainerNetwork
+	}
+
+	return globalConfigValues
+}
+
+// Returns the project folder (i.e. current folder) on the host
+func configProjectDir() string {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return cwd
+}
+
+// Returns the project name derived from the name of the project (i.e. current) folder
+func configDefaultProjectName() string {
+	return filepath.Base(configProjectDir())
+}
+
+// Returns the default hostname for the dev container
+func configDefaultDevContainerHost(configValues ConfigValues) string {
+	return configValues.Name
+}
+
+// Returns the default path where the project is mounted inside the dev container
+func configDefaultDevContainerDir(configValues ConfigValues) string {
+	return "/" + configValues.Name
+}
+
+// Returns the default name for the dev container
+func configDefaultDevContainerName(configValues ConfigValues) string {
+	return configValues.Name
+}
+
+// Returns the default network for the dev container
+func configDefaultDevContainerNetwork(_configValues ConfigValues) string {
+	return ""
+}
+
+// Returns the primary volume (mounting the project folder) for the dev container
+// Example:
+//
+//	configDevContainerPrimaryVolume() // "/home/alex/Projects/devsh:/devsh"
+func configDevContainerPrimaryVolume(configValues ConfigValues) string {
+	return configProjectDir() + ":" + configValues.DevContainerDir
 }
 
 func init() {

@@ -3,13 +3,15 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
-var Version string = "debug-version"
+var (
+	Version           string = "debug-version"
+	globalFlagVerbose bool   = false
+)
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
@@ -26,7 +28,17 @@ Or:
 	devsh # default action starts a development container and opens a shell in one go
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("default action called")
+		cfg := startContainerConfig(cmd)
+
+		// start the dev container if it is not started yet
+		if !(dockerIsContainerPresent(cfg.DevContainerName) && dockerIsContainerRunning(cfg.DevContainerName)) {
+			dockerCmd := startDockerCmd(cfg)
+			dockerRunCmd(dockerCmd)
+		}
+
+		openShell(cfg)
+
+		statusDisplay(cfg)
 	},
 }
 
@@ -45,8 +57,10 @@ func init() {
 	// will be global for your application.
 
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.devsh.yaml)")
+	rootCmd.PersistentFlags().BoolVarP(&globalFlagVerbose, "verbose", "v", false, "Produce verbose output")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// rootCmd.Flags().BoolVarP(&globalFlagVerbose, "verbose", "v", false, "Produce verbose output")
+	rootCmd.Flags().StringP("image", "i", "", "Use this docker image for the dev container")
 }

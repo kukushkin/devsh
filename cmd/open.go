@@ -3,24 +3,29 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 )
 
 // openCmd represents the open command
 var openCmd = &cobra.Command{
 	Use:   "open",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
+	Short: "Open a shell in the dev container",
+	Long: `Open a shell in the development container.
 
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("open called")
+		cfg := configLoad()
+		openShell(cfg)
+		statusDisplay(cfg)
 	},
+}
+
+func openShell(cfg ConfigValues) {
+	opts := []string{
+		"-ti",
+	}
+	shellCmd := dockerConstructCmd("exec", opts, cfg.DevContainerName, cfg.ShellCmd)
+	dockerRunInteractive(shellCmd)
 }
 
 func init() {
@@ -30,7 +35,7 @@ func init() {
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// openCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// openCmd.PersistentFlags().StringP("image", "i", "", "Help message for image")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
