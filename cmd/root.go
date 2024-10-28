@@ -5,18 +5,20 @@ package cmd
 import (
 	"os"
 
+	"github.com/kukushkin/devsh/version"
 	"github.com/spf13/cobra"
 )
 
+const VERSION_TEMPLATE = "devsh {{.Version}}\n"
+
 var (
-	Version           string = "v0.1.0-dev"
-	globalFlagVerbose bool   = false
+	globalFlagVerbose bool = false
 )
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
 	Use:     "devsh",
-	Version: Version,
+	Version: version.Version,
 	Short:   "Run a shell in a development container",
 	Long: `Devsh is a CLI tool that allows you to start an isolated docker container
 with your project mounted inside (development container), and open a shell into it.
@@ -63,4 +65,6 @@ func init() {
 	// when this action is called directly.
 	// rootCmd.Flags().BoolVarP(&globalFlagVerbose, "verbose", "v", false, "Produce verbose output")
 	rootCmd.Flags().StringP("image", "i", "", "Use this docker image for the dev container")
+
+	rootCmd.SetVersionTemplate(VERSION_TEMPLATE)
 }
