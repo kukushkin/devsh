@@ -23,6 +23,7 @@ type GlobalConfigValues struct {
 	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
 	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
 	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
+	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
 }
 
 var defaultGlobalConfigValues = GlobalConfigValues{
@@ -30,6 +31,7 @@ var defaultGlobalConfigValues = GlobalConfigValues{
 	ShellCmd:            "/bin/bash",
 	DevContainerVolumes: nil,
 	DevContainerNetwork: "",
+	DevContainerDNS:     "",
 }
 
 // Project config values replace global config values if set
@@ -42,6 +44,7 @@ type ConfigValues struct {
 	DevContainerName    string   `yaml:"dev_container_name,omitempty"`
 	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
 	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
+	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
 }
 
 // configCmd represents the config command
@@ -66,6 +69,7 @@ directory of the project.
   dev_container_name: # human-readable name for the dev container in docker
   dev_container_volumes: # additional volumes to be mounted inside the dev container
   dev_container_network: # docker network for the dev container
+  dev_container_dns: # explicit DNS server to use for the dev container
 
   TBD
 `,
@@ -99,6 +103,9 @@ func configLoad() ConfigValues {
 	if configValues.DevContainerNetwork == "" {
 		configValues.DevContainerNetwork = globalConfigValues.DevContainerNetwork
 	}
+	if configValues.DevContainerDNS == "" {
+		configValues.DevContainerDNS = globalConfigValues.DevContainerDNS
+	}
 
 	// fill values that are still empty with dynamically constructed conventional defaults
 	if configValues.Name == "" {
@@ -116,6 +123,9 @@ func configLoad() ConfigValues {
 	}
 	if configValues.DevContainerNetwork == "" {
 		configValues.DevContainerNetwork = configDefaultDevContainerNetwork(configValues)
+	}
+	if configValues.DevContainerDNS == "" {
+		configValues.DevContainerDNS = configDefaultDevContainerDNS(configValues)
 	}
 
 	return configValues
@@ -171,6 +181,9 @@ func configLoadGlobal() GlobalConfigValues {
 	if globalConfigValues.DevContainerNetwork == "" {
 		globalConfigValues.DevContainerNetwork = defaultGlobalConfigValues.DevContainerNetwork
 	}
+	if globalConfigValues.DevContainerDNS == "" {
+		globalConfigValues.DevContainerDNS = defaultGlobalConfigValues.DevContainerDNS
+	}
 
 	return globalConfigValues
 }
@@ -207,6 +220,11 @@ func configDefaultDevContainerName(configValues ConfigValues) string {
 
 // Returns the default network for the dev container
 func configDefaultDevContainerNetwork(_configValues ConfigValues) string {
+	return ""
+}
+
+// Returns the default DNS for the dev container
+func configDefaultDevContainerDNS(_configValues ConfigValues) string {
 	return ""
 }
 
