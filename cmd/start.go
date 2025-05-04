@@ -72,6 +72,9 @@ func startDockerCmd(cfg ConfigValues) string {
 	if cfg.DevContainerDNS != "" {
 		opts = append(opts, "--dns "+cfg.DevContainerDNS)
 	}
+	for _, ports := range cfg.DevContainerPorts {
+		opts = append(opts, "--publish "+ports)
+	}
 	for _, volume := range cfg.DevContainerVolumes {
 		opts = append(opts, "--volume "+volume)
 	}

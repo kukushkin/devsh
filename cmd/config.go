@@ -21,6 +21,7 @@ const (
 type GlobalConfigValues struct {
 	Image               string   `yaml:"image,omitempty"`
 	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
+	DevContainerPorts   []string `yaml:"dev_container_ports,omitempty"`
 	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
 	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
 	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
@@ -29,6 +30,7 @@ type GlobalConfigValues struct {
 var defaultGlobalConfigValues = GlobalConfigValues{
 	Image:               "",
 	ShellCmd:            "/bin/bash",
+	DevContainerPorts:   nil,
 	DevContainerVolumes: nil,
 	DevContainerNetwork: "",
 	DevContainerDNS:     "",
@@ -42,6 +44,7 @@ type ConfigValues struct {
 	DevContainerHost    string   `yaml:"dev_container_host,omitempty"`
 	DevContainerDir     string   `yaml:"dev_container_dir,omitempty"`
 	DevContainerName    string   `yaml:"dev_container_name,omitempty"`
+	DevContainerPorts   []string `yaml:"dev_container_ports,omitempty"`
 	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
 	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
 	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
@@ -67,6 +70,7 @@ directory of the project.
   dev_container_host: # name of the host for the dev container
   dev_container_dir: # path inside the dev container where the project is going to be mounted
   dev_container_name: # human-readable name for the dev container in docker
+  dev_container_ports: # ports of the container exposed on host
   dev_container_volumes: # additional volumes to be mounted inside the dev container
   dev_container_network: # docker network for the dev container
   dev_container_dns: # explicit DNS server to use for the dev container
@@ -96,6 +100,9 @@ func configLoad() ConfigValues {
 	}
 	if configValues.ShellCmd == "" {
 		configValues.ShellCmd = globalConfigValues.ShellCmd
+	}
+	if len(configValues.DevContainerPorts) == 0 {
+		configValues.DevContainerPorts = globalConfigValues.DevContainerPorts
 	}
 	if len(configValues.DevContainerVolumes) == 0 {
 		configValues.DevContainerVolumes = globalConfigValues.DevContainerVolumes
@@ -174,6 +181,9 @@ func configLoadGlobal() GlobalConfigValues {
 	}
 	if globalConfigValues.ShellCmd == "" {
 		globalConfigValues.ShellCmd = defaultGlobalConfigValues.ShellCmd
+	}
+	if len(globalConfigValues.DevContainerPorts) == 0 {
+		globalConfigValues.DevContainerPorts = defaultGlobalConfigValues.DevContainerPorts
 	}
 	if len(globalConfigValues.DevContainerVolumes) == 0 {
 		globalConfigValues.DevContainerVolumes = defaultGlobalConfigValues.DevContainerVolumes
