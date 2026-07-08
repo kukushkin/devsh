@@ -39,7 +39,7 @@ func startContainerConfig(cmd *cobra.Command) ConfigValues {
 
 	// validate mandatory config values
 	if cfg.Image == "" {
-		log.Fatal("ERROR: Docker image for dev container is not specified, consider specifying it in a .devsh file")
+		log.Fatal("ERROR: Docker image for the dev container is not specified. Set it in the global config (~/.config/devsh), a .devsh file, or via the --image flag.")
 	}
 
 	return cfg

@@ -247,10 +247,10 @@ func expandTilde(p string) string {
 }
 
 func configLoadLocal() ConfigValues {
-	// If the config file does not exist, return an empty configuration
+	// A project config file is optional; return an empty configuration when it
+	// is not present (e.g. when running with minimal configuration).
 	_, err := os.Stat(configFilename)
 	if errors.Is(err, os.ErrNotExist) {
-		log.Printf("WARN: Config file is not found: %s\n", configFilename)
 		return ConfigValues{}
 	}
 	if err != nil {
