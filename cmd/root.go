@@ -65,13 +65,13 @@ func init() {
 	// highest priority, overriding values from the global and project config
 	// files. They are persistent so they apply to every subcommand.
 	rootCmd.PersistentFlags().StringP("image", "i", "", "Docker image for the dev container")
-	rootCmd.PersistentFlags().String("name", "", "Name of the project")
-	rootCmd.PersistentFlags().String("shell-cmd", "", "Shell to start inside the dev container (e.g. /bin/bash)")
+	rootCmd.PersistentFlags().StringP("name", "n", "", "Name of the project")
+	rootCmd.PersistentFlags().StringP("shell-cmd", "s", "", "Shell to start inside the dev container (e.g. /bin/bash)")
 	rootCmd.PersistentFlags().String("container-host", "", "Hostname for the dev container")
 	rootCmd.PersistentFlags().String("container-dir", "", "Path inside the dev container where the project is mounted")
 	rootCmd.PersistentFlags().String("container-name", "", "Human-readable name for the dev container")
-	rootCmd.PersistentFlags().StringSlice("ports", nil, "Ports of the container exposed on the host")
-	rootCmd.PersistentFlags().StringSlice("volumes", nil, "Additional volumes to be mounted inside the dev container")
+	rootCmd.PersistentFlags().StringSliceP("ports", "p", nil, "Ports of the container exposed on the host")
+	rootCmd.PersistentFlags().StringSliceP("volumes", "V", nil, "Additional volumes to be mounted inside the dev container")
 	rootCmd.PersistentFlags().String("network", "", "Docker network for the dev container")
 	rootCmd.PersistentFlags().String("dns", "", "Explicit DNS server to use for the dev container")
 
