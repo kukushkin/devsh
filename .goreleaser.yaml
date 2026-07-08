@@ -1,0 +1,54 @@
+# .goreleaser.yaml
+version: 2
+
+# Commands executed before the build starts
+before:
+  hooks:
+    - go mod tidy
+
+# Compilation settings
+builds:
+  - env:
+      - CGO_ENABLED=0 # Disables dynamic linking for highly portable, standalone binaries
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Injects versioning metadata directly into your Go main package variables at compile time
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.Date={{.CommitDate}}
+
+# Packaging configuration for the downloadable archives
+archives:
+  - format: tar.gz
+    # Standard naming convention: devsh_Linux_x86_64.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "arm64" }}arm64
+      {{- else }}{{ .Arch }}{{ end }}
+    # Files included alongside the binary in the downloadable archive
+    files:
+      - LICENSE*
+      - README*
+
+# Automatically calculates SHA-256 hashes for security verification
+checksum:
+  name_template: "checksums.txt"
+
+# Automation for your shared Homebrew Tap repository
+brews:
+  - repository:
+      owner: kukushkin
+      name: homebrew-tap
+    directory: Formula
+    homepage: "https://github.com/kukushkin/devsh"
+    description: "Shell that runs inside a development container"
+    license: "MIT"
+
+    # Custom installation script instructions for Homebrew
+    install: |
+      bin.install "devsh"

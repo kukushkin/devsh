@@ -1,12 +1,17 @@
 [![cli-app-release](https://github.com/kukushkin/devsh/actions/workflows/cli-app-release.yaml/badge.svg)](https://github.com/kukushkin/devsh/actions/workflows/cli-app-release.yaml)
 
 # devsh
-Development shell to run inside a docker container
+
+A shell that runs inside a development container:
+
+* Starts a development container with your development tools (e.g. NodeJS or Python)
+* Mounts your current folder into the container
+* Runs a shell inside the container
 
 ## Prerequisites
 
-* docker
-* prebuild docker images for your development containers
+* Docker
+* prebuild Docker images for your development containers
 
 ## Installation
 
