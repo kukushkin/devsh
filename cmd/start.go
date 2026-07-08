@@ -52,6 +52,7 @@ func startDockerCmd(cfg ConfigValues) string {
 		"--hostname " + cfg.ContainerHost,
 		"--workdir " + cfg.ContainerDir,
 		"--detach",
+		"-t", // allocate a pseudo-TTY so the container's main process stays alive
 	}
 	if cfg.Network != "" {
 		opts = append(opts, "--network "+cfg.Network)
