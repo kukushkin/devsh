@@ -9,3 +9,6 @@ jobs:
     permissions:
       contents: write
     uses: kukushkin/workflows/.github/workflows/github-release.yaml@main
+    with:
+      write_version: true
+      version_filename: version/version.txt
