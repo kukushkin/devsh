@@ -48,7 +48,7 @@ func startContainerConfig(cmd *cobra.Command) ConfigValues {
 // Constructs the docker command from the dev container configuration
 func startDockerCmd(cfg ConfigValues) string {
 	opts := []string{
-		"--name " + cfg.Name,
+		"--name " + cfg.ContainerName,
 		"--hostname " + cfg.ContainerHost,
 		"--workdir " + cfg.ContainerDir,
 		"--detach",

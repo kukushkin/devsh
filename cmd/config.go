@@ -3,6 +3,8 @@
 package cmd
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"log"
@@ -319,9 +321,19 @@ func configDefaultContainerDir(configValues ConfigValues) string {
 	return "/" + configValues.Name
 }
 
-// Returns the default name for the dev container
+// Returns the default name for the dev container. The name is composed of the
+// project (directory) name and a short suffix derived from the full path to the
+// project directory, e.g. "devsh-a1b2". The suffix disambiguates containers
+// for projects that share the same directory name.
 func configDefaultContainerName(configValues ConfigValues) string {
-	return configValues.Name
+	return configValues.Name + "-" + configProjectPathHash()
+}
+
+// configProjectPathHash returns the first 4 hex characters of the SHA-256 hash
+// of the full path to the current project directory.
+func configProjectPathHash() string {
+	h := sha256.Sum256([]byte(configProjectDir()))
+	return hex.EncodeToString(h[:2])
 }
 
 // Returns the default network for the dev container
