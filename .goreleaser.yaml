@@ -39,18 +39,6 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
-homebrew_casks:
-  - name: devsh
-    homepage: "https://github.com/kukushkin/devsh"
-    description: "Shell that runs inside a development container"
-    license: "MIT"
-    binaries:
-      - devsh
-    repository:
-      owner: kukushkin
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-
 brews:
   - name: devsh
     homepage: "https://github.com/kukushkin/devsh"
