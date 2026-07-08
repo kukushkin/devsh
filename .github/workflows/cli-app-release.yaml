@@ -1,0 +1,9 @@
+name: cli-app-release
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  cli-app-release:
+    uses: kukushkin/workflows/.github/workflows/github-release.yaml@main
