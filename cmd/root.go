@@ -33,7 +33,7 @@ Or:
 		cfg := startContainerConfig(cmd)
 
 		// start the dev container if it is not started yet
-		if !(dockerIsContainerPresent(cfg.DevContainerName) && dockerIsContainerRunning(cfg.DevContainerName)) {
+		if !(dockerIsContainerPresent(cfg.ContainerName) && dockerIsContainerRunning(cfg.ContainerName)) {
 			dockerCmd := startDockerCmd(cfg)
 			dockerRunCmd(dockerCmd)
 		}
@@ -61,10 +61,19 @@ func init() {
 	// rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.devsh.yaml)")
 	rootCmd.PersistentFlags().BoolVarP(&globalFlagVerbose, "verbose", "v", false, "Produce verbose output")
 
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	// rootCmd.Flags().BoolVarP(&globalFlagVerbose, "verbose", "v", false, "Produce verbose output")
-	rootCmd.Flags().StringP("image", "i", "", "Use this docker image for the dev container")
+	// Configuration flags mirror the configurable parameters and have the
+	// highest priority, overriding values from the global and project config
+	// files. They are persistent so they apply to every subcommand.
+	rootCmd.PersistentFlags().StringP("image", "i", "", "Docker image for the dev container")
+	rootCmd.PersistentFlags().StringP("name", "n", "", "Name of the project")
+	rootCmd.PersistentFlags().StringP("shell-cmd", "s", "", "Shell to start inside the dev container (e.g. /bin/bash)")
+	rootCmd.PersistentFlags().String("container-host", "", "Hostname for the dev container")
+	rootCmd.PersistentFlags().String("container-dir", "", "Path inside the dev container where the project is mounted")
+	rootCmd.PersistentFlags().String("container-name", "", "Human-readable name for the dev container")
+	rootCmd.PersistentFlags().StringSliceP("ports", "p", nil, "Ports of the container exposed on the host")
+	rootCmd.PersistentFlags().StringSliceP("volumes", "V", nil, "Additional volumes to be mounted inside the dev container")
+	rootCmd.PersistentFlags().String("network", "", "Docker network for the dev container")
+	rootCmd.PersistentFlags().String("dns", "", "Explicit DNS server to use for the dev container")
 
 	rootCmd.SetVersionTemplate(VERSION_TEMPLATE)
 }

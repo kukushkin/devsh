@@ -15,13 +15,13 @@ var statusCmd = &cobra.Command{
 	Long: `Shows status of the development container for the current project.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := configLoad()
+		cfg := configLoad(cmd)
 		statusDisplay(cfg)
 	},
 }
 
 func statusDisplay(cfg ConfigValues) {
-	containerName := cfg.DevContainerName
+	containerName := cfg.ContainerName
 	if dockerIsContainerPresent(containerName) {
 		if dockerIsContainerRunning(containerName) {
 			fmt.Printf("* Dev container %s is running (%s)\n", containerName, dockerContainerIdShort(containerName))

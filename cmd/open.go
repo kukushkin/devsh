@@ -14,7 +14,7 @@ var openCmd = &cobra.Command{
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := configLoad()
+		cfg := configLoad(cmd)
 		openShell(cfg)
 		statusDisplay(cfg)
 	},
@@ -24,7 +24,7 @@ func openShell(cfg ConfigValues) {
 	opts := []string{
 		"-ti",
 	}
-	shellCmd := dockerConstructCmd("exec", opts, cfg.DevContainerName, cfg.ShellCmd)
+	shellCmd := dockerConstructCmd("exec", opts, cfg.ContainerName, cfg.ShellCmd)
 	dockerRunInteractive(shellCmd)
 }
 

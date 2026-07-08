@@ -18,7 +18,7 @@ var startCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg := startContainerConfig(cmd)
 
-		if !dockerIsContainerPresent(cfg.DevContainerName) {
+		if !dockerIsContainerPresent(cfg.ContainerName) {
 			dockerCmd := startDockerCmd(cfg)
 			dockerRunCmd(dockerCmd)
 		}
@@ -27,32 +27,19 @@ var startCmd = &cobra.Command{
 	},
 }
 
-func startImageFlag(cmd *cobra.Command) string {
-	image, err := cmd.Flags().GetString("image")
-	if err != nil {
-		log.Fatalf("ERROR: Failed to fetch flag: ", err)
-	}
-	return image
-}
-
-// Returns the configuration constructed for the  dev container, combined from all the sources and validated
+// Returns the configuration constructed for the dev container, combined from
+// all the sources and validated.
 func startContainerConfig(cmd *cobra.Command) ConfigValues {
-	cfg := configLoad()
-
-	// process flags set for "start" command
-	image := startImageFlag(cmd)
-	if image != "" {
-		cfg.Image = image
-	}
+	cfg := configLoad(cmd)
 
 	// construct container volumes configuration
 	primaryVolume := configDevContainerPrimaryVolume(cfg)
-	cfg.DevContainerVolumes =
-		append([]string{primaryVolume}, cfg.DevContainerVolumes...)
+	cfg.Volumes =
+		append([]string{primaryVolume}, cfg.Volumes...)
 
 	// validate mandatory config values
 	if cfg.Image == "" {
-		log.Fatal("ERROR: Docker image for dev container is not specified, consider specifying it in a .devsh file")
+		log.Fatal("ERROR: Docker image for the dev container is not specified. Set it in the global config (~/.config/devsh), a .devsh file, or via the --image flag.")
 	}
 
 	return cfg
@@ -61,21 +48,21 @@ func startContainerConfig(cmd *cobra.Command) ConfigValues {
 // Constructs the docker command from the dev container configuration
 func startDockerCmd(cfg ConfigValues) string {
 	opts := []string{
-		"--name " + cfg.Name,
-		"--hostname " + cfg.DevContainerHost,
-		"--workdir " + cfg.DevContainerDir,
+		"--name " + cfg.ContainerName,
+		"--hostname " + cfg.ContainerHost,
+		"--workdir " + cfg.ContainerDir,
 		"--detach",
 	}
-	if cfg.DevContainerNetwork != "" {
-		opts = append(opts, "--network "+cfg.DevContainerNetwork)
+	if cfg.Network != "" {
+		opts = append(opts, "--network "+cfg.Network)
 	}
-	if cfg.DevContainerDNS != "" {
-		opts = append(opts, "--dns "+cfg.DevContainerDNS)
+	if cfg.DNS != "" {
+		opts = append(opts, "--dns "+cfg.DNS)
 	}
-	for _, ports := range cfg.DevContainerPorts {
+	for _, ports := range cfg.Ports {
 		opts = append(opts, "--publish "+ports)
 	}
-	for _, volume := range cfg.DevContainerVolumes {
+	for _, volume := range cfg.Volumes {
 		opts = append(opts, "--volume "+volume)
 	}
 
@@ -94,5 +81,4 @@ func init() {
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
 	// startCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	startCmd.Flags().StringP("image", "i", "", "Use this docker image for the dev container")
 }
