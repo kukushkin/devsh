@@ -50,3 +50,17 @@ homebrew_casks:
       owner: kukushkin
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+
+brews:
+  - name: devsh
+    homepage: "https://github.com/kukushkin/devsh"
+    description: "Shell that runs inside a development container"
+    license: "MIT"
+    install: |
+      bin.install "devsh"
+
+    repository:
+      owner: kukushkin
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Formula
