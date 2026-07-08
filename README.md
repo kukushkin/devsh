@@ -15,7 +15,13 @@ A shell that runs inside a development container:
 
 ## Installation
 
-### Using "go install"
+### MacOS: Using Homebrew
+
+```
+brew install --cask kukushkin/tap/devsh
+```
+
+### Linux: Using "go install"
 
 ```
 go install github.com/kukushkin/devsh@latest
