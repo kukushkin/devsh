@@ -6,4 +6,6 @@ on:
 
 jobs:
   cli-app-release:
+    permissions:
+      contents: write
     uses: kukushkin/workflows/.github/workflows/github-release.yaml@main
