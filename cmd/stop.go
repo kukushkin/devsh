@@ -17,7 +17,14 @@ var stopCmd = &cobra.Command{
 		cfg := configLoad(cmd)
 
 		if dockerIsContainerPresent(cfg.ContainerName) {
-			stopCmd := dockerConstructCmd("stop", nil, cfg.ContainerName)
+			// Stop the container gracefully with a short timeout. `docker stop`
+			// sends SIGTERM to PID 1 and waits up to the timeout (here 1s) for
+			// the process to exit on its own before escalating to SIGKILL. The
+			// container's main process is an idle shell that typically does not
+			// handle SIGTERM, so the short timeout keeps `devsh stop` fast while
+			// still giving any background processes inside a brief grace period
+			// to shut down.
+			stopCmd := dockerConstructCmd("stop", []string{"-t 1"}, cfg.ContainerName)
 			dockerRunCmd(stopCmd)
 			rmCmd := dockerConstructCmd("rm", nil, cfg.ContainerName)
 			dockerRunCmd(rmCmd)
