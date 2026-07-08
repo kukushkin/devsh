@@ -49,3 +49,4 @@ homebrew_casks:
     repository:
       owner: kukushkin
       name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
