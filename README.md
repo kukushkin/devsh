@@ -31,6 +31,17 @@ This downloads and compiles `devsh` and places it into `$GOPATH/bin`.
 
 ## How to use
 
+### Quick start
+
+Go to your project folder and run `devsh` with the official Ubuntu image as a dev container:
+
+```
+cd my-project
+devsh -i ubuntu
+```
+
+This will start a dev container, mount your project folder into it, and run the shell inside it.
+
 ### Configure your project
 
 Place a `.devsh` file into the root folder of your project to configure the
@@ -81,42 +92,6 @@ For each parameter, the value from the highest-priority source that provides it
 takes precedence; values from lower-priority sources are inherited when a
 higher-priority source does not set the parameter.
 
-### Minimal configuration (without a `.devsh` file)
-
-A `.devsh` file is not required. You can run `devsh` in any folder as long as
-the docker image is provided through the global configuration or the `--image`
-flag. For example, set a default image once for all projects:
-
-```
-echo "image: dev-go" > ~/.config/devsh
-```
-
-then run `devsh` in any folder:
-
-```
-devsh
-```
-
-or pass the image on the command line:
-
-```
-devsh --image dev-go
-```
-
-All other parameters fall back to their built-in defaults (e.g. the container
-name is derived from the current directory name).
-
-### Starting a shell in the development container
-
-Run in your project root folder:
-
-```
-devsh
-```
-
-This starts the development container (if it is not running yet) and opens a
-shell into it.
-
 ### Commands
 
 | Command | Description |
@@ -152,4 +127,23 @@ Example:
 
 ```
 devsh --image dev-go --network my-network -p 8080:8080
+```
+
+### Using any docker image
+
+The development container is started with `docker run -td` (detached with a
+pseudo-TTY), which keeps the container's main process alive so a shell can be
+opened into it later. This means you can use just about any image that has a
+shell, with no preparation:
+
+```
+cd my-project
+devsh -i ubuntu
+```
+
+For images that do not ship `bash` (e.g. Alpine), point `shell_cmd` at a shell
+they provide:
+
+```
+devsh -i alpine -s /bin/sh
 ```
