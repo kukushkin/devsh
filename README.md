@@ -1,3 +1,5 @@
+![Workflow Status](https://github.com/kukshkin/devsh/actions/workflows/cli-app-release.yaml/badge.svg)
+
 # devsh
 Development shell to run inside a docker container
 
