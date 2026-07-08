@@ -18,7 +18,7 @@ A shell that runs inside a development container:
 ### MacOS: Using Homebrew
 
 ```
-brew install --cask kukushkin/tap/devsh
+brew install kukushkin/tap/devsh
 ```
 
 ### Linux: Using "go install"
