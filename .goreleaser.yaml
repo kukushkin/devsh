@@ -22,7 +22,7 @@ builds:
 
 # Packaging configuration for the downloadable archives
 archives:
-  - format: tar.gz
+  - formats: ["tar.gz"]
     # Standard naming convention: devsh_Linux_x86_64.tar.gz
     name_template: >-
       {{ .ProjectName }}_
@@ -39,16 +39,13 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
-# Automation for your shared Homebrew Tap repository
-brews:
-  - repository:
-      owner: kukushkin
-      name: homebrew-tap
-    directory: Formula
+homebrew_casks:
+  - name: devsh
     homepage: "https://github.com/kukushkin/devsh"
     description: "Shell that runs inside a development container"
     license: "MIT"
-
-    # Custom installation script instructions for Homebrew
-    install: |
-      bin.install "devsh"
+    binaries:
+      - devsh
+    repository:
+      owner: kukushkin
+      name: homebrew-tap
