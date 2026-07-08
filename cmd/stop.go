@@ -14,12 +14,12 @@ var stopCmd = &cobra.Command{
 
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := configLoad()
+		cfg := configLoad(cmd)
 
-		if dockerIsContainerPresent(cfg.DevContainerName) {
-			stopCmd := dockerConstructCmd("stop", nil, cfg.DevContainerName)
+		if dockerIsContainerPresent(cfg.ContainerName) {
+			stopCmd := dockerConstructCmd("stop", nil, cfg.ContainerName)
 			dockerRunCmd(stopCmd)
-			rmCmd := dockerConstructCmd("rm", nil, cfg.DevContainerName)
+			rmCmd := dockerConstructCmd("rm", nil, cfg.ContainerName)
 			dockerRunCmd(rmCmd)
 		}
 

@@ -8,46 +8,39 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	globalConfigFilename string = "~/.devsh/config"
-	configFilename       string = ".devsh"
+	configFilename string = ".devsh"
 )
 
-type GlobalConfigValues struct {
-	Image               string   `yaml:"image,omitempty"`
-	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
-	DevContainerPorts   []string `yaml:"dev_container_ports,omitempty"`
-	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
-	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
-	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
-}
-
-var defaultGlobalConfigValues = GlobalConfigValues{
-	Image:               "",
-	ShellCmd:            "/bin/bash",
-	DevContainerPorts:   nil,
-	DevContainerVolumes: nil,
-	DevContainerNetwork: "",
-	DevContainerDNS:     "",
-}
-
-// Project config values replace global config values if set
+// ConfigValues holds every configurable parameter of devsh. The same set of
+// values can be provided by any of the three configuration sources: the global
+// config file, the project .devsh file, and command-line flags.
 type ConfigValues struct {
-	Image               string   `yaml:"image,omitempty"`
-	Name                string   `yaml:"name,omitempty"`
-	ShellCmd            string   `yaml:"shell_cmd,omitempty"`
-	DevContainerHost    string   `yaml:"dev_container_host,omitempty"`
-	DevContainerDir     string   `yaml:"dev_container_dir,omitempty"`
-	DevContainerName    string   `yaml:"dev_container_name,omitempty"`
-	DevContainerPorts   []string `yaml:"dev_container_ports,omitempty"`
-	DevContainerVolumes []string `yaml:"dev_container_volumes,omitempty"`
-	DevContainerNetwork string   `yaml:"dev_container_network,omitempty"`
-	DevContainerDNS     string   `yaml:"dev_container_dns,omitempty"`
+	Image         string   `yaml:"image,omitempty"`
+	Name          string   `yaml:"name,omitempty"`
+	ShellCmd      string   `yaml:"shell_cmd,omitempty"`
+	ContainerHost string   `yaml:"container_host,omitempty"`
+	ContainerDir  string   `yaml:"container_dir,omitempty"`
+	ContainerName string   `yaml:"container_name,omitempty"`
+	Ports         []string `yaml:"ports,omitempty"`
+	Volumes       []string `yaml:"volumes,omitempty"`
+	Network       string   `yaml:"network,omitempty"`
+	DNS           string   `yaml:"dns,omitempty"`
+}
+
+// defaultConfigValues returns the built-in defaults. These have the lowest
+// priority and are only used when a value is not provided by any of the three
+// configuration sources.
+func defaultConfigValues() ConfigValues {
+	return ConfigValues{
+		ShellCmd: "/bin/bash",
+	}
 }
 
 // configCmd represents the config command
@@ -56,33 +49,37 @@ var configCmd = &cobra.Command{
 	Short: "Show the current project configuration",
 	Long: `Show the configuration of the project in the current folder.
 
-The configuration of the project is combined from the global devsh configuration
-found in (TBD) and the local configuration file placed in the project root directory.
+The configuration is combined from the following sources, listed from the
+lowest priority to the highest:
 
-The local project configuration file should be named '.devsh' and placed in the root
-directory of the project.
+  1. Built-in defaults
+  2. Global configuration file (default: ~/.config/devsh, overridable via
+     the DEVSH_CONFIG environment variable)
+  3. Project configuration file (.devsh in the current folder)
+  4. Command-line flags
 
-.devsh file is a YAML file with the following format (all keys are optional):
+For every parameter, the value from the highest-priority source that provides
+it takes precedence; values from lower-priority sources are inherited when a
+higher-priority source does not set the parameter.
+
+The .devsh file is a YAML file with the following format (all keys are optional):
   image: # docker image to be used for dev container
   name: # name of the project, if omitted the directory name is used
-  TBD_devenv: # name of the docker compose environment, to attach to
   shell_cmd: # shell to start inside the dev container, e.g. /bin/bash
-  dev_container_host: # name of the host for the dev container
-  dev_container_dir: # path inside the dev container where the project is going to be mounted
-  dev_container_name: # human-readable name for the dev container in docker
-  dev_container_ports: # ports of the container exposed on host
-  dev_container_volumes: # additional volumes to be mounted inside the dev container
-  dev_container_network: # docker network for the dev container
-  dev_container_dns: # explicit DNS server to use for the dev container
-
-  TBD
+  container_host: # name of the host for the dev container
+  container_dir: # path inside the dev container where the project is going to be mounted
+  container_name: # human-readable name for the dev container in docker
+  ports: # ports of the container exposed on host
+  volumes: # additional volumes to be mounted inside the dev container
+  network: # docker network for the dev container
+  dns: # explicit DNS server to use for the dev container
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg := configLoad()
+		cfg := configLoad(cmd)
 
 		configYaml, err := yaml.Marshal(cfg)
 		if err != nil {
-			log.Fatalf("ERROR: Failed to serialize config: ", err)
+			log.Fatalf("ERROR: Failed to serialize config: %s", err)
 		}
 
 		fmt.Printf("---\n%s\n", string(configYaml))
@@ -90,52 +87,161 @@ directory of the project.
 }
 
 // Loads and returns a combined config for the project in the current folder.
-func configLoad() ConfigValues {
-	globalConfigValues := configLoadGlobal()
-	configValues := configLoadLocal()
+//
+// Values are merged from four layers, each overriding the previous one:
+//  1. built-in defaults
+//  2. global configuration file
+//  3. project configuration file (.devsh)
+//  4. command-line flags
+//
+// Finally, values that are still empty are filled with dynamically constructed
+// conventional defaults derived from the project directory.
+func configLoad(cmd *cobra.Command) ConfigValues {
+	cfg := defaultConfigValues()
 
-	// fill empty values with defaults from the global configuration
-	if configValues.Image == "" {
-		configValues.Image = globalConfigValues.Image
-	}
-	if configValues.ShellCmd == "" {
-		configValues.ShellCmd = globalConfigValues.ShellCmd
-	}
-	if len(configValues.DevContainerPorts) == 0 {
-		configValues.DevContainerPorts = globalConfigValues.DevContainerPorts
-	}
-	if len(configValues.DevContainerVolumes) == 0 {
-		configValues.DevContainerVolumes = globalConfigValues.DevContainerVolumes
-	}
-	if configValues.DevContainerNetwork == "" {
-		configValues.DevContainerNetwork = globalConfigValues.DevContainerNetwork
-	}
-	if configValues.DevContainerDNS == "" {
-		configValues.DevContainerDNS = globalConfigValues.DevContainerDNS
+	cfg = mergeConfig(cfg, configLoadGlobal())
+	cfg = mergeConfig(cfg, configLoadLocal())
+	cfg = mergeConfig(cfg, configLoadFlags(cmd))
+
+	// fill values that are still empty with dynamically constructed defaults
+	if cfg.Name == "" {
+		cfg.Name = configDefaultProjectName()
 	}
 
-	// fill values that are still empty with dynamically constructed conventional defaults
-	if configValues.Name == "" {
-		configValues.Name = configDefaultProjectName()
+	if cfg.ContainerHost == "" {
+		cfg.ContainerHost = configDefaultContainerHost(cfg)
+	}
+	if cfg.ContainerDir == "" {
+		cfg.ContainerDir = configDefaultContainerDir(cfg)
+	}
+	if cfg.ContainerName == "" {
+		cfg.ContainerName = configDefaultContainerName(cfg)
+	}
+	if cfg.Network == "" {
+		cfg.Network = configDefaultNetwork(cfg)
+	}
+	if cfg.DNS == "" {
+		cfg.DNS = configDefaultDNS(cfg)
 	}
 
-	if configValues.DevContainerHost == "" {
-		configValues.DevContainerHost = configDefaultDevContainerHost(configValues)
+	return cfg
+}
+
+// mergeConfig returns base with every field overridden by the corresponding
+// non-empty field from override. Empty fields in override are ignored so that
+// lower-priority values are inherited. Slice fields are replaced (not
+// concatenated) when override provides any values.
+func mergeConfig(base, override ConfigValues) ConfigValues {
+	if override.Image != "" {
+		base.Image = override.Image
 	}
-	if configValues.DevContainerDir == "" {
-		configValues.DevContainerDir = configDefaultDevContainerDir(configValues)
+	if override.Name != "" {
+		base.Name = override.Name
 	}
-	if configValues.DevContainerName == "" {
-		configValues.DevContainerName = configDefaultDevContainerName(configValues)
+	if override.ShellCmd != "" {
+		base.ShellCmd = override.ShellCmd
 	}
-	if configValues.DevContainerNetwork == "" {
-		configValues.DevContainerNetwork = configDefaultDevContainerNetwork(configValues)
+	if override.ContainerHost != "" {
+		base.ContainerHost = override.ContainerHost
 	}
-	if configValues.DevContainerDNS == "" {
-		configValues.DevContainerDNS = configDefaultDevContainerDNS(configValues)
+	if override.ContainerDir != "" {
+		base.ContainerDir = override.ContainerDir
+	}
+	if override.ContainerName != "" {
+		base.ContainerName = override.ContainerName
+	}
+	if len(override.Ports) > 0 {
+		base.Ports = override.Ports
+	}
+	if len(override.Volumes) > 0 {
+		base.Volumes = override.Volumes
+	}
+	if override.Network != "" {
+		base.Network = override.Network
+	}
+	if override.DNS != "" {
+		base.DNS = override.DNS
+	}
+	return base
+}
+
+// configLoadFlags collects values provided via command-line flags. Only flags
+// that were explicitly set on the command line are taken into account, so that
+// unset flags do not clobber values coming from the config files.
+func configLoadFlags(cmd *cobra.Command) ConfigValues {
+	var cfg ConfigValues
+	if cmd == nil {
+		return cfg
 	}
 
-	return configValues
+	flags := cmd.Flags()
+
+	if flags.Changed("image") {
+		cfg.Image, _ = flags.GetString("image")
+	}
+	if flags.Changed("name") {
+		cfg.Name, _ = flags.GetString("name")
+	}
+	if flags.Changed("shell-cmd") {
+		cfg.ShellCmd, _ = flags.GetString("shell-cmd")
+	}
+	if flags.Changed("container-host") {
+		cfg.ContainerHost, _ = flags.GetString("container-host")
+	}
+	if flags.Changed("container-dir") {
+		cfg.ContainerDir, _ = flags.GetString("container-dir")
+	}
+	if flags.Changed("container-name") {
+		cfg.ContainerName, _ = flags.GetString("container-name")
+	}
+	if flags.Changed("ports") {
+		cfg.Ports, _ = flags.GetStringSlice("ports")
+	}
+	if flags.Changed("volumes") {
+		cfg.Volumes, _ = flags.GetStringSlice("volumes")
+	}
+	if flags.Changed("network") {
+		cfg.Network, _ = flags.GetString("network")
+	}
+	if flags.Changed("dns") {
+		cfg.DNS, _ = flags.GetString("dns")
+	}
+
+	return cfg
+}
+
+// configGlobalPath returns the path to the global configuration file. The
+// location can be overridden with the DEVSH_CONFIG environment variable; it
+// defaults to ~/.config/devsh. A leading '~' is expanded to the user's home
+// directory.
+func configGlobalPath() string {
+	if p := os.Getenv("DEVSH_CONFIG"); p != "" {
+		return expandTilde(p)
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatalf("ERROR: Failed to determine home directory: %s", err)
+	}
+	return filepath.Join(home, ".config", "devsh")
+}
+
+// expandTilde replaces a leading '~' with the user's home directory.
+func expandTilde(p string) string {
+	if p == "~" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return p
+		}
+		return home
+	}
+	if strings.HasPrefix(p, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return p
+		}
+		return filepath.Join(home, p[2:])
+	}
+	return p
 }
 
 func configLoadLocal() ConfigValues {
@@ -145,57 +251,47 @@ func configLoadLocal() ConfigValues {
 		log.Printf("WARN: Config file is not found: %s\n", configFilename)
 		return ConfigValues{}
 	}
+	if err != nil {
+		log.Fatalf("ERROR: Failed to stat config file %s: %s", configFilename, err)
+	}
 
 	configFile, err := os.ReadFile(configFilename)
 	if err != nil {
-
-		log.Fatalf("ERROR: Failed to open config file: %s", err)
-		panic(err)
+		log.Fatalf("ERROR: Failed to read config file %s: %s", configFilename, err)
 	}
 
 	var configValues ConfigValues
-	yaml.Unmarshal(configFile, &configValues)
+	if err := yaml.Unmarshal(configFile, &configValues); err != nil {
+		log.Fatalf("ERROR: Failed to parse config file %s: %s", configFilename, err)
+	}
 
 	return configValues
 }
 
-func configLoadGlobal() GlobalConfigValues {
-	// If the config file does not exist, return an empty/default configuration
-	_, err := os.Stat(globalConfigFilename)
+func configLoadGlobal() ConfigValues {
+	path := configGlobalPath()
+
+	// If the config file does not exist, return an empty configuration; a
+	// global config file is optional.
+	_, err := os.Stat(path)
 	if errors.Is(err, os.ErrNotExist) {
-		return defaultGlobalConfigValues
+		return ConfigValues{}
 	}
-
-	configFile, err := os.ReadFile(globalConfigFilename)
 	if err != nil {
-
-		log.Fatalf("ERROR: Failed to open config file: %s", err)
+		log.Fatalf("ERROR: Failed to stat global config file %s: %s", path, err)
 	}
 
-	var globalConfigValues GlobalConfigValues
-	yaml.Unmarshal(configFile, &globalConfigValues)
-
-	// fill empty values with defaults from the global configuration
-	if globalConfigValues.Image == "" {
-		globalConfigValues.Image = defaultGlobalConfigValues.Image
-	}
-	if globalConfigValues.ShellCmd == "" {
-		globalConfigValues.ShellCmd = defaultGlobalConfigValues.ShellCmd
-	}
-	if len(globalConfigValues.DevContainerPorts) == 0 {
-		globalConfigValues.DevContainerPorts = defaultGlobalConfigValues.DevContainerPorts
-	}
-	if len(globalConfigValues.DevContainerVolumes) == 0 {
-		globalConfigValues.DevContainerVolumes = defaultGlobalConfigValues.DevContainerVolumes
-	}
-	if globalConfigValues.DevContainerNetwork == "" {
-		globalConfigValues.DevContainerNetwork = defaultGlobalConfigValues.DevContainerNetwork
-	}
-	if globalConfigValues.DevContainerDNS == "" {
-		globalConfigValues.DevContainerDNS = defaultGlobalConfigValues.DevContainerDNS
+	configFile, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatalf("ERROR: Failed to read global config file %s: %s", path, err)
 	}
 
-	return globalConfigValues
+	var configValues ConfigValues
+	if err := yaml.Unmarshal(configFile, &configValues); err != nil {
+		log.Fatalf("ERROR: Failed to parse global config file %s: %s", path, err)
+	}
+
+	return configValues
 }
 
 // Returns the project folder (i.e. current folder) on the host
@@ -214,27 +310,27 @@ func configDefaultProjectName() string {
 }
 
 // Returns the default hostname for the dev container
-func configDefaultDevContainerHost(configValues ConfigValues) string {
+func configDefaultContainerHost(configValues ConfigValues) string {
 	return configValues.Name
 }
 
 // Returns the default path where the project is mounted inside the dev container
-func configDefaultDevContainerDir(configValues ConfigValues) string {
+func configDefaultContainerDir(configValues ConfigValues) string {
 	return "/" + configValues.Name
 }
 
 // Returns the default name for the dev container
-func configDefaultDevContainerName(configValues ConfigValues) string {
+func configDefaultContainerName(configValues ConfigValues) string {
 	return configValues.Name
 }
 
 // Returns the default network for the dev container
-func configDefaultDevContainerNetwork(_configValues ConfigValues) string {
+func configDefaultNetwork(_configValues ConfigValues) string {
 	return ""
 }
 
 // Returns the default DNS for the dev container
-func configDefaultDevContainerDNS(_configValues ConfigValues) string {
+func configDefaultDNS(_configValues ConfigValues) string {
 	return ""
 }
 
@@ -243,7 +339,7 @@ func configDefaultDevContainerDNS(_configValues ConfigValues) string {
 //
 //	configDevContainerPrimaryVolume() // "/home/alex/Projects/devsh:/devsh"
 func configDevContainerPrimaryVolume(configValues ConfigValues) string {
-	return configProjectDir() + ":" + configValues.DevContainerDir
+	return configProjectDir() + ":" + configValues.ContainerDir
 }
 
 func init() {
